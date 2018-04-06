@@ -1,0 +1,3 @@
+core_msgs/ROIPointArray reqArray
+---
+std_msgs/Int32 res
