@@ -1,0 +1,17 @@
+%YAML 1.0
+
+
+#Vehicle
+
+#Road
+Road.lanewidth: 3.0
+
+#Camera
+
+#Map
+Map.width: 200
+Map.height: 200
+Map.resolution: 0.02  #m/pix
+
+Map.obstacle.paddingx: 1
+Map.obstacle.paddingy: 2
