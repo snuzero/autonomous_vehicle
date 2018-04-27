@@ -21,3 +21,5 @@ this can be used for estimation of curvature of the path
 
 # smoother
 let's use curvature Cost for estimation of path curvature
+
+HI
