@@ -2,7 +2,12 @@
 
 
 #Vehicle
-
+Vehicle.width: 1.6
+Vehicle.length: 2.6
+Vehicle.wheelbase: 1.6
+Vehicle.length_front: 0.8
+Vehicle.length_rear: 0.8 #length_rear + length_front = wheelbase
+Vehicle.cm_lidar_dist: 1.0
 #Road
 Road.lanewidth: 3.0
 
@@ -11,7 +16,16 @@ Road.lanewidth: 3.0
 #Map
 Map.width: 200
 Map.height: 200
-Map.resolution: 0.02  #m/pix
+#TODO Change this
+Map.resolution: 0.03  #m/pix
 
 Map.obstacle.paddingx: 1
 Map.obstacle.paddingy: 2
+Map.obstacle.min_range: 0.5
+Map.obstacle.max_range: 6.0
+Map.obstacle.min_theta: -10
+Map.obstacle.max_theta: 190
+
+
+#Path Plan
+Path.headings: 12

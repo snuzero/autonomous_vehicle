@@ -1,0 +1,6 @@
+<launch>
+ <node pkg = "lms_client" type="lms_client" name="lms_client"/>
+ <node pkg = "lms1xx" type="LMS1xx_node" name="lms1xx" output="screen"/>
+ <node pkg = "map_generator" type="map_gen" name ="map_generator" args="true true" output="screen"/>
+ <node name="astar_planner" pkg="astar_planner" type="path_planner" output="screen"/>
+</launch>

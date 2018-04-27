@@ -1,9 +1,10 @@
 #include "ros/ros.h"
+#include "sensor_msgs/Image.h"
 #include "sensor_msgs/LaserScan.h"
 #include "core_msgs/ROIPointArray.h"
 
 #define RAD2DEG(x) ((x)*180./M_PI)
-
+#define Z_DEBUG true
 ros::Publisher scan_publisher;
 core_msgs::ROIPointArrayPtr obstacle_points;
 
@@ -26,8 +27,30 @@ void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
   obstacle_points->extra.push_back(scan->angle_increment);
 
   obstacle_points->header.stamp = ros::Time::now();
-  scan_publisher.publish(obstacle_points);
+}
 
+//the obstacle_points data is published only after the lane_map data is published
+//this is for the synchronization for the lane_map and obstacle_points, also needed for map_generator
+//TODO: Need more sophisticated synchronization
+void callbackLane(const sensor_msgs::ImageConstPtr& msg_lane_map) {
+  if(Z_DEBUG)
+  {
+    obstacle_points->Vector3DArray.clear();
+    geometry_msgs::Vector3 point_;
+
+    for(int i = 0; i< 100; i++) {
+      point_.x = 0;
+      point_.y = M_PI/2;
+      point_.z = 1;
+      obstacle_points->Vector3DArray.push_back(point_);
+    }
+    obstacle_points->id.push_back(100);
+    obstacle_points->extra.push_back(M_PI);
+    obstacle_points->extra.push_back(1);
+
+    obstacle_points->header.stamp = ros::Time::now();
+  }
+  scan_publisher.publish(obstacle_points);
 }
 
 int main(int argc, char **argv) {
@@ -38,7 +61,8 @@ int main(int argc, char **argv) {
   obstacle_points.reset(new core_msgs::ROIPointArray);
 
   ros::Subscriber sub = nh.subscribe<sensor_msgs::LaserScan>("/scan", 10, scanCallback);
-  ros::spin();
+  ros::Subscriber laneSub = nh.subscribe("/lane_map",1,callbackLane);
 
+  ros::spin();
   return 0;
 }

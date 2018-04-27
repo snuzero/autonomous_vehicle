@@ -23,6 +23,9 @@ add_message_files( DIRECTORY msg
   MapFlag.msg
   XboxFlag.msg
   LaneInfo.msg
+  VehicleState.msg
+  MissionPark.msg
+  Path3DArray.msg
 )
 
 ## Generate services in the 'srv' folder
