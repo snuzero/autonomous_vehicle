@@ -38,11 +38,11 @@ static const bool visualization = false;
 /// A flag for the visualization of 2D nodes (true = on; false = off)
 static const bool visualization2D = false;
 /// A flag to toggle reversing (true = on; false = off)
-static const bool reverse = false;
+static const bool reverse = true;
 /// A flag to toggle the connection of the path via Dubin's shot (true = on; false = off)
 static const bool dubinsShot = true;
 /// A flag to toggle the Dubin's heuristic, this should be false, if reversing is enabled (true = on; false = off)
-static const bool dubins = true;
+static const bool dubins = false;
 /*!
    \var static const bool dubinsLookup
    \brief A flag to toggle the Dubin's heuristic via lookup, potentially speeding up the search by a lot
@@ -56,23 +56,17 @@ static const bool twoD = false;
 // GENERAL CONSTANTS
 
 /// [#] --- Limits the maximum search depth of the algorithm, possibly terminating without the solution
-static const int iterations = 40000;
+static const int iterations = 10000;
 /// [m] --- Uniformly adds a padding around the vehicle
 static const double bloating = 0;
 /// [m] --- The width of the vehicle
-// static const double width = 0.3 + 2 * bloating;
-// /// [m] --- The length of the vehicle
-// static const double length = 0.5 + 2 * bloating;
-
-// For DEBUG
 static const double width = 0.3 + 2 * bloating;
 /// [m] --- The length of the vehicle
 static const double length = 0.5 + 2 * bloating;
-
 /// [m] --- The minimum turning radius of the vehicle
 static const float r = 3;
 /// [m] --- The number of discretizations in heading
-static const int headings = 12; //headings^2 * dubinsWidth^2 has to be an integer
+static const int headings = 15;
 /// [°] --- The discretization value of the heading (goal condition)
 static const float deltaHeadingDeg = 360 / (float)headings;
 /// [c*M_PI] --- The discretization value of heading (goal condition)
@@ -103,7 +97,6 @@ static const float penaltyReversing = 2.0;
 /// [#] --- A movement cost penalty for change of direction (changing from primitives < 3 to primitives > 2)
 static const float penaltyCOD = 2.0;
 /// [m] --- The distance to the goal when the analytical solution (Dubin's shot) first triggers
-//this dimension may be in pix
 static const float dubinsShotDistance = 3;
 /// [m] --- The step size for the analytical solution (Dubin's shot) primarily relevant for collision checking
 static const float dubinsStepSize = 0.03;

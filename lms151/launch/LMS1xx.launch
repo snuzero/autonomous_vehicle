@@ -5,4 +5,5 @@
     <param name="host" value="$(arg host)" />
     <param name="publish_min_range_as_inf" value="$(arg publish_min_range_as_inf)" />
   </node>
+  <node pkg = "lms_client" type="lms_client" name="lms_client"/>
 </launch>

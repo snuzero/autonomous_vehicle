@@ -16,25 +16,12 @@ find_package(catkin REQUIRED
 
 add_message_files( DIRECTORY msg
   FILES
-  ImagePoint.msg
-  CompressedImagePoint.msg
   ROIPointArray.msg
-  Vector3DArray.msg
-  MapFlag.msg
-  XboxFlag.msg
-  LaneInfo.msg
   VehicleState.msg
-  MissionPark.msg
-  Path3DArray.msg
+  PathArray.msg
+  CenPoint.msg
+  Control.msg
 )
-
-## Generate services in the 'srv' folder
- add_service_files( DIRECTORY srv
-   FILES
-   CameraImg.srv
-   MapGenPoint.srv
-   CameraCrop.srv
- )
 
 ## Generate added messages and services with any dependencies listed here
 generate_messages(DEPENDENCIES   geometry_msgs  sensor_msgs   std_msgs )

@@ -10,6 +10,7 @@
 #include <sensor_msgs/Image.h>
 #include <image_transport/image_transport.h>
 
+#include "zdebug.h"
 #include "constants.h"
 #include "helper.h"
 #include "collisiondetection.h"
@@ -23,24 +24,23 @@
 #include "std_msgs/Int32.h"
 #include "geometry_msgs/Pose2D.h"
 #include "geometry_msgs/Vector3.h"
-#include "core_msgs/Vector3DArray.h"
-#include "core_msgs/MapFlag.h"
 #include "core_msgs/VehicleState.h"
 #include "core_msgs/MissionPark.h"
 #include "opencv2/opencv.hpp"
 #include <boost/thread.hpp>
 #include <boost/bind.hpp>
 
-#define Z_DEBUG true
-
-float vel =10;//m/s
-float delta = M_PI/10;//delta in radian
+float vel =1.5;//m/s
+float delta = 0.32;//delta in radian
 float map_resol;
 float wheelbase = 1.6;
 bool isparkmission = false;
 int map_width, map_height;
 int headings;
-
+float delay = 0.4;
+int flag_obstacle = 0;
+int target_x = 0;
+int target_y = 0;
 
 image_transport::Publisher publishMonintorMap;
 sensor_msgs::ImagePtr msgMonitorMap;
@@ -73,8 +73,9 @@ public:
   float* dubinsLookup = new float [Constants::headings * Constants::headings * Constants::dubinsWidth * Constants::dubinsWidth];
 };
 
+
 Astar::Astar() {
-  if(Z_DEBUG) std::cout<<"Astart Created"<<std::endl;
+  zd_print("Astar Created");
 }
 
 void Astar::plan(geometry_msgs::PoseWithCovarianceStamped start, geometry_msgs::PoseStamped goal) {
@@ -137,22 +138,24 @@ void Astar::plan(geometry_msgs::PoseWithCovarianceStamped start, geometry_msgs::
 
       if(nSolution==nullptr) std::cout<<"nSolution is Null Pointer" <<std::endl;
       // TRACE THE PATH (update the path in the smoother object)
-      smoother.tracePath(nSolution);
-      // CREATE THE UPDATED PATH
-      path.updatePath(smoother.getPath());
-      // SMOOTH THE PATH
-      smoother.smoothPath(voronoiDiagram);
-      // CREATE THE UPDATED PATH
-      smoothedPath.updatePath(smoother.getPath());
-      ros::Time plan_t2 = ros::Time::now();
-      ros::Duration d2(plan_t2 - plan_t1);
-      std::cout << "Smoothing Time in ms: " << d2 * 1000 << std::endl;
+      else {
+        smoother.tracePath(nSolution);
+        // CREATE THE UPDATED PATH
+        path.updatePath(smoother.getPath());
+        // SMOOTH THE PATH
+        smoother.smoothPath(voronoiDiagram);
+        // CREATE THE UPDATED PATH
+        smoothedPath.updatePath(smoother.getPath());
+        ros::Time plan_t2 = ros::Time::now();
+        ros::Duration d2(plan_t2 - plan_t1);
+        std::cout << "Smoothing Time in ms: " << d2 * 1000 << std::endl;
 
-      // _________________________________
-      // PUBLISH THE RESULTS OF THE SEARCH
-      path.publishPath();
-      smoothedPath.publishPath();
+        // _________________________________
+        // PUBLISH THE RESULTS OF THE SEARCH
 
+        path.publishPath();
+        smoothedPath.publishPath();
+      }
       delete [] nodes3D;
       delete [] nodes2D;
 }
@@ -177,7 +180,8 @@ void drawMonitorMap(Astar& astar) {
 }
 
 void callbackState(const core_msgs::VehicleStateConstPtr& msg_state) {
-  //TODO:
+  delta = (msg_state->steer)*M_PI/180.0;
+  if(msg_state->speed<20 && msg_state->speed>-20)  vel = msg_state->speed;
 }
 
 void callbackPark(const core_msgs::MissionParkConstPtr& park_){
@@ -186,34 +190,46 @@ void callbackPark(const core_msgs::MissionParkConstPtr& park_){
 
 
 void callbackTerminate(const std_msgs::Int32Ptr& record) {
-  //TODO:
+  ros::shutdown();
+  return;
 }
 
-void callbackMain(const boost::shared_ptr<core_msgs::MapFlag const> msg_map, Astar& astar)
+void callbackMain(const sensor_msgs::ImageConstPtr& msg_map, Astar& astar)
 {
-  if(Z_DEBUG)  std::cout << "------------------------------------------------------------------" << std::endl;
-
+  if(Z_DEBUG && flag_obstacle!=0)  std::cout << "------------------------------------------------------------------" << std::endl;
+  if(flag_obstacle==0) return;
   ros::Time map_time = msg_map->header.stamp; //the time when the map is recorded
+  ros::Time t0 = ros::Time::now();
 
   astar.initializeLookups();
 
   cv_bridge::CvImageConstPtr cv_ptr;
   try
   {
-    boost::shared_ptr<void const> tracked_object_tmp;
-    cv_ptr = cv_bridge::toCvShare(msg_map->frame, tracked_object_tmp);
+    cv_ptr = cv_bridge::toCvCopy(msg_map, sensor_msgs::image_encodings::RGB8);
   }
   catch (cv_bridge::Exception& e)
   {
     ROS_ERROR("cv_bridge exception: %s", e.what());
     return;
   }
+
+  float yaw_delta = (float)(vel*delta*delay)/wheelbase;
+
+  float x_delay_shift, y_delay_shift;
+  if(yaw_delta != 0) {
+    x_delay_shift = (float)(wheelbase*(1-cos(yaw_delta))/delta)/map_resol;
+    y_delay_shift = (float)(wheelbase*sin(yaw_delta)/delta)/map_resol;
+  }
+  else {
+    x_delay_shift = 0;
+    y_delay_shift = vel*delay/map_resol;
+  }
   astar.gridmap = cv_ptr->image.clone();
   astar.configurationSpace.updateGrid(astar.gridmap);
   //create array for Voronoi diagram
-  ros::Time t0 = ros::Time::now();
-  int height = msg_map->frame.height;
-  int width = msg_map->frame.width;
+  int height = msg_map->height;
+  int width = msg_map->width;
   //std::cout<<"height and width of msg_map is "<<height<<", "<<width<<std::endl;
   bool** binMap;
   binMap = new bool*[width];
@@ -239,36 +255,27 @@ void callbackMain(const boost::shared_ptr<core_msgs::MapFlag const> msg_map, Ast
   //DEBUG
   ros::Time t1 = ros::Time::now();
   ros::Duration d(t1 - t0);
-  std::cout << "created Voronoi Diagram in ms: " << d * 1000 << std::endl;
+  //std::cout << "created Voronoi Diagram in ms: " << d * 1000 << std::endl;
 
   // assign the values to start from base_link
   geometry_msgs::PoseWithCovarianceStamped start;
-
   //setting start point
   //TODO: check how the plan() function use this start point
   //TODO: change this later according to it
-  float yaw_delta = (float)(vel*delta*d.toSec())/wheelbase;
   std::cout<<"yaw_delta in rad is"<<yaw_delta<<std::endl;
-  if(yaw_delta !=0) {
-    start.pose.pose.position.x = map_width/2 - (float)(wheelbase*(1-cos(yaw_delta))/delta)/map_resol;
-    start.pose.pose.position.y = map_height - (float)(wheelbase*sin(yaw_delta)/delta)/map_resol;
-    std::cout<<"start x and y is ("<<start.pose.pose.position.x<<", "<<start.pose.pose.position.y<<")"<<std::endl;
-  }
-  else {
-    start.pose.pose.position.x = map_width/2;
-    start.pose.pose.position.y = map_height - vel*d.toSec()/map_resol;
-    std::cout<<"start x and y is ("<<start.pose.pose.position.x<<", "<<start.pose.pose.position.y<<")"<<std::endl;
-  }
+  start.pose.pose.position.y = map_width/2 - x_delay_shift;
+  start.pose.pose.position.x = map_height - y_delay_shift; // x and y flips for the input of path planning
+  std::cout<<"start x and y is ("<<start.pose.pose.position.x<<", "<<start.pose.pose.position.y<<")"<<std::endl;
 
-  tf::Quaternion q = tf::createQuaternionFromRPY(0, 0, yaw_delta+M_PI_2+M_PI);
+  tf::Quaternion q = tf::createQuaternionFromRPY(0, 0, yaw_delta+M_PI);
   tf::quaternionTFToMsg(q,start.pose.pose.orientation);
 
 
   //TODO: have to define the goal as the center of the lane of the farrest side
   geometry_msgs::PoseStamped goal;
-  goal.pose.position.x = map_width/2;
-  goal.pose.position.y = 1;
-  tf::Quaternion q_goal = tf::createQuaternionFromRPY(0, 0, M_PI_2+M_PI);
+  goal.pose.position.y = target_y;
+  goal.pose.position.x = target_x;
+  tf::Quaternion q_goal = tf::createQuaternionFromRPY(0, 0, M_PI);
   tf::quaternionTFToMsg(q_goal,goal.pose.orientation);
   std::cout<<"goal x and y is ("<<goal.pose.position.x<<", "<<goal.pose.position.y<<")"<<std::endl;
 
@@ -277,7 +284,23 @@ void callbackMain(const boost::shared_ptr<core_msgs::MapFlag const> msg_map, Ast
 
   astar.plan(start, goal);
   drawMonitorMap(astar);
+  ros::Time t2 = ros::Time::now();
+  ros::Duration d_final(t2 - t0);
+  cout<<"the delay ground truth is: " <<d_final.toSec()<<" sec" <<endl;
+
+  delay = 0.4 * 0.4 + delay * 0.36 + d_final.toSec() * 0.24;
+  cout<<"the delay for planning is: " <<delay<<" sec" <<endl;
 }
+
+void callbackFlagObstacle(const std_msgs::Int32::ConstPtr & msg_flag_obstacle) {
+  flag_obstacle = msg_flag_obstacle->data;
+}
+
+void callbackTarget(const geometry_msgs::Vector3::ConstPtr & msg_target) {
+  target_x = msg_target->x;
+  target_y = msg_target->y;
+}
+
 
 int main(int argc, char** argv) {
   std::string config_path = ros::package::getPath("map_generator");
@@ -302,13 +325,15 @@ int main(int argc, char** argv) {
 
   ros::Subscriber stateSub = nh.subscribe("/vehicle_state",1,callbackState);
   ros::Subscriber parkingSub = nh.subscribe("/mission_park",1,callbackPark);
+  ros::Subscriber flagobstacleSub = nh.subscribe("/flag_obstacle",1,callbackFlagObstacle);
   //TODO:: for park mission, the message also tell us the target point
 
-  ros::Subscriber mapSub = nh.subscribe<core_msgs::MapFlag>("/occupancy_map",1,boost::bind(callbackMain, _1, boost::ref(astar)));
+  image_transport::Subscriber mapSub = it.subscribe("/occupancy_map",1,boost::bind(callbackMain, _1, boost::ref(astar)));
   ros::Subscriber endSub = nh.subscribe("/end_system",1,callbackTerminate);
+  ros::Subscriber targetSub = nh.subscribe("/planning_target", 1, callbackTarget);
 
   //TODO: add v & delta service client
-  ros::Rate loop_rate(20);
+  //ros::Rate loop_rate(20);
   ros::spin();
   return 0;
 }

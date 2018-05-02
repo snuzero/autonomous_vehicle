@@ -1,5 +1,5 @@
 #include "algorithm.h"
-
+#include "zdebug.h"
 #include <boost/heap/binomial_heap.hpp>
 
 using namespace HybridAStar;
@@ -46,9 +46,6 @@ Node3D* Algorithm::hybridAStar(Node3D& start,
   // Number of iterations the algorithm has run for stopping based on Constants::iterations
   int iterations = 0;
 
-  // VISUALIZATION DELAY
-  ros::Duration d(0.003);
-
   // OPEN LIST AS BOOST IMPLEMENTATION
   typedef boost::heap::binomial_heap<Node3D*,
           boost::heap::compare<CompareNodes>
@@ -56,6 +53,7 @@ Node3D* Algorithm::hybridAStar(Node3D& start,
   priorityQueue O;
 
   // update h value
+
   updateH(start, goal, nodes2D, dubinsLookup, width, height, configurationSpace);
   //std::cout<<"width and height are "<<width <<", "<<height<<std::endl;
   //std::cout<<"hybridAStar updateH finished"<<std::endl;
@@ -78,10 +76,14 @@ Node3D* Algorithm::hybridAStar(Node3D& start,
   Node3D* nSucc;
 
   // float max = 0.f;
+  double progress_time =0.0;
+  ros::Time t0 = ros::Time::now();
 
   // continue until O empty
   while (!O.empty()) {
-    if(iterations ==0) std::cout<<"while(!O.empty) loop starts"<<std::endl;
+    if(iterations ==0) {
+      std::cout<<"while(!O.empty) loop starts"<<std::endl;
+    }
 
     //    // DEBUG
     //    Node3D* pre = nullptr;
@@ -137,7 +139,12 @@ Node3D* Algorithm::hybridAStar(Node3D& start,
     // set index
     iPred = nPred->setIdx(width, height);
     iterations++;
-
+    //std::cout<<"one while loop has ended!"<<std::endl;
+    ros::Time t1 = ros::Time::now();
+    //std::cout<<"hybridAstar to much time spent: "<<progress_time<<std::endl;
+    ros::Duration d(t1-t0);
+    progress_time = progress_time + d.toSec();
+    t0 = t1;
     // // RViz visualization
     // if (Constants::visualization) {
     //   visualization.publishNode3DPoses(*nPred);
@@ -151,8 +158,8 @@ Node3D* Algorithm::hybridAStar(Node3D& start,
     if (nodes3D[iPred].isClosed()) {
       // pop node from the open list and start with a fresh node
       O.pop();
-      std::cout<<"PoP3 ";
-      std::cout<<" size of pQueue: "<<O.size()<<std::endl;
+      //std::cout<<"PoP3 ";
+      //std::cout<<" size of pQueue: "<<O.size()<<std::endl;
       continue;
     }
     // _________________
@@ -162,17 +169,26 @@ Node3D* Algorithm::hybridAStar(Node3D& start,
       nodes3D[iPred].close();
       // remove node from open list
       O.pop();
-      std::cout<<"PoP4 ";
-      std::cout<<" size of pQueue: "<<O.size()<<std::endl;
+      //std::cout<<"PoP4 ";
+      //std::cout<<" size of pQueue: "<<O.size()<<std::endl;
+
+      if(progress_time >= 0.5) {
+        std::cout<<"hybridAstar too much time spent: "<<progress_time<<std::endl;
+        return nullptr;
+      }
 
       // _________
       // GOAL TEST
-      if (*nPred == goal || iterations > Constants::iterations) {
+      if (*nPred == goal) {
         // DEBUG
         std::cout<<"hybridAstar total iterations: "<<iterations<<std::endl;
-        return nPred;
+        return nPred;//original code
       }
-
+      else if (iterations > Constants::iterations) {
+        // DEBUG
+        std::cout<<"hybridAstar total iterations exceeded maximum iterations"<<iterations<<std::endl;
+        return nullptr;
+      }
       // ____________________
       // CONTINUE WITH SEARCH
       else {
@@ -211,7 +227,7 @@ Node3D* Algorithm::hybridAStar(Node3D& start,
 
                 // calculate H value
                 updateH(*nSucc, goal, nodes2D, dubinsLookup, width, height, configurationSpace);
-                std::cout<<"size of the priorityQueue is "<<O.size()<<std::endl;
+                //std::cout<<"size of the priorityQueue is "<<O.size()<<std::endl;
                 //std::cout<<"updateH finished in while loop"<<std::endl;
                 // if the successor is in the same cell but the C value is larger
                 if (iPred == iSucc && nSucc->getC() > nPred->getC() + Constants::tieBreaker) {
@@ -238,9 +254,8 @@ Node3D* Algorithm::hybridAStar(Node3D& start,
         }
       }
     }
-    //std::cout<<"one while loop has ended!"<<std::endl;
-  }
 
+  }
   if (O.empty()) {
     std::cout<<"hybridAstar total iterations: "<<iterations<<std::endl;
     std::cout<<"null pointer condition: O.empty()"<<std::endl;

@@ -42,6 +42,7 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/vector2d.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/helper.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/lookup.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/zdebug.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/gradient.h #Andrew Noske
     ${CMAKE_CURRENT_SOURCE_DIR}/include/dubins.h #Andrew Walker
     ${CMAKE_CURRENT_SOURCE_DIR}/include/dynamicvoronoi.h #Boris Lau, Christoph Sprunk, Wolfram Burgard

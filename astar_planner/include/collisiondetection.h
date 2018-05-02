@@ -67,7 +67,7 @@ class CollisionDetection {
     if (true) {
       //std::cout<<"starts here2"<<std::endl;
       cost = configurationTest(x, y, t) ? 0 : 1;
-      if(cost ==1) std::cout<<"not traversable!"<<std::endl;
+      // if(cost ==1) std::cout<<"not traversable!"<<std::endl;
       //std::cout<<"configurationTest finish"<<std::endl;
     } else {
       cost = configurationCost(x, y, t);

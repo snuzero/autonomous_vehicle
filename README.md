@@ -15,7 +15,7 @@ G == 255: estimated path points (monitor_map only)
 (R,G,B) ==(200,200,200): this is lidar position
 
 # core_msgs
-Path3DArray: for path data,
+PathArray: for path data,
 delta: the delta that the hybrid A* used for the current fragment of the path,
 this can be used for estimation of curvature of the path
 

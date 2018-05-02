@@ -16,9 +16,16 @@ const int Node3D::dir = 3;
 // const float Node3D::dx[] = { 1.1,   1.095814,   1.095814};
 // const float Node3D::dt[] = { 0,         0.174533,   -0.174533};//in pix
 
-const float Node3D::dy[] = { 0,        -0.287613,  0.287613};
-const float Node3D::dx[] = { 3.3,   3.287442,   3.287442};
-const float Node3D::dt[] = { 0,         0.523599,   -0.523599};//in pix
+
+//This works quite well
+// const float Node3D::dy[] = { 0,        -0.287613,  0.287613};
+// const float Node3D::dx[] = { 3.3,   3.287442,   3.287442};
+// const float Node3D::dt[] = { 0,         0.174533,   -0.174533};//in rad
+
+const float Node3D::dy[] = { 0,        -0.479355,  0.479355};
+const float Node3D::dx[] = { 5.5,   5.47907,   5.47907};
+const float Node3D::dt[] = { 0,         0.174533,   -0.174533};//in rad
+
 
 // R = 3, 6.75 DEG
 //const float Node3D::dy[] = { 0,        -0.0207946, 0.0207946};
@@ -41,9 +48,9 @@ bool Node3D::isOnGrid(const int width, const int height) const {
 //                                        IS IN RANGE
 //###################################################
 bool Node3D::isInRange(const Node3D& goal) const {
-  int random = rand() % 10 + 1;
-  float dx = std::abs(x - goal.x) / random;
-  float dy = std::abs(y - goal.y) / random;
+  //int random = rand() % 10 + 1;
+  float dx = std::abs(x - goal.x);
+  float dy = std::abs(y - goal.y);
   return (dx * dx) + (dy * dy) < Constants::dubinsShotDistance;
 }
 
@@ -300,8 +307,8 @@ void Node3D::updateG() {
 //                                 3D NODE COMPARISON
 //###################################################
 bool Node3D::operator == (const Node3D& rhs) const {
-  return (int)x == (int)rhs.x &&
-         (int)y == (int)rhs.y &&
+  return std::abs((int)x - (int)rhs.x)<3 &&
+         std::abs((int)y - (int)rhs.y)<3 &&
          (std::abs(t - rhs.t) <= Constants::deltaHeadingRad ||
           std::abs(t - rhs.t) >= Constants::deltaHeadingNegRad);
 }

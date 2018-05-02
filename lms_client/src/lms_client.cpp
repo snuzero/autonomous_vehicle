@@ -3,22 +3,29 @@
 #include "sensor_msgs/LaserScan.h"
 #include "core_msgs/ROIPointArray.h"
 
+#define Z_DEBUG false
+
 #define RAD2DEG(x) ((x)*180./M_PI)
-#define Z_DEBUG true
+
 ros::Publisher scan_publisher;
 core_msgs::ROIPointArrayPtr obstacle_points;
 
 void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan) {
+  std::cout<<"scan callback"<<std::endl;
   int count = scan->scan_time / scan->time_increment;
   ROS_INFO("angle_range, %f, %f", RAD2DEG(scan->angle_min), RAD2DEG(scan->angle_max));
+  ROS_INFO("angle_increment, %f", RAD2DEG(scan->angle_increment));
 
   obstacle_points->Vector3DArray.clear();
+  obstacle_points->id.clear();
+  obstacle_points->extra.clear();
+
   geometry_msgs::Vector3 point_;
 
   for(int i = 0; i< count; i++) {
-    float degree = scan->angle_min + scan->angle_increment *i;
+    float radian = scan->angle_min + scan->angle_increment *i;
     point_.x = scan->ranges[i];
-    point_.y = degree + M_PI/2;
+    point_.y = radian + M_PI/2;
     point_.z = 1;
     obstacle_points->Vector3DArray.push_back(point_);
   }
@@ -38,15 +45,20 @@ void callbackLane(const sensor_msgs::ImageConstPtr& msg_lane_map) {
     obstacle_points->Vector3DArray.clear();
     geometry_msgs::Vector3 point_;
 
-    for(int i = 0; i< 100; i++) {
-      point_.x = 0;
-      point_.y = M_PI/2;
+    for(int i = 0; i< 150; i++) {
+      point_.x = 0.0;
+      if(i == 60) point_.x = 2.5;
+      if(i == 80) point_.x = 1.5;
+      if(i == 100) point_.x = 2.5;
+      if(i == 110) point_.x = 2.0;
+
+      point_.y = i * 0.031415;
       point_.z = 1;
       obstacle_points->Vector3DArray.push_back(point_);
     }
     obstacle_points->id.push_back(100);
     obstacle_points->extra.push_back(M_PI);
-    obstacle_points->extra.push_back(1);
+    obstacle_points->extra.push_back(0.05);
 
     obstacle_points->header.stamp = ros::Time::now();
   }

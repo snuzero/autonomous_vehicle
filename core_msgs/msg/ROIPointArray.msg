@@ -1,3 +1,5 @@
+#used to deliver vector 3d array or frame array with additional information
+
 Header header
 int32[] id
 int32[] tag

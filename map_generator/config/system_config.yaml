@@ -19,10 +19,13 @@ Map.height: 200
 #TODO Change this
 Map.resolution: 0.03  #m/pix
 
-Map.obstacle.paddingx: 1
-Map.obstacle.paddingy: 2
-Map.obstacle.min_range: 0.5
-Map.obstacle.max_range: 6.0
+Map.obstacle.paddingx: 1 #for occupancy_map_raw rect arount occupied points
+Map.obstacle.paddingy: 1 #for occupancy_map_raw rect arount occupied points
+Map.obstacle.safex: 16 #for occupancy_map ellipse arount occupied points
+Map.obstacle.safey: 32 #for occupancy_map ellipse arount occupied points
+Map.obstacle.min_range: 0.4
+#Map.obstacle.max_range: 4.0
+Map.obstacle.max_range: 1.5
 Map.obstacle.min_theta: -10
 Map.obstacle.max_theta: 190
 

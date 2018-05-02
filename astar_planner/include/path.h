@@ -7,7 +7,7 @@
 
 #include <ros/ros.h>
 //#include <tf/transform_datatypes.h>
-#include "core_msgs/Path3DArray.h"
+#include "core_msgs/PathArray.h"
 #include "node3d.h"
 #include "constants.h"
 #include "helper.h"
@@ -28,10 +28,11 @@ class Path {
 
     // _________________
     // TOPICS TO PUBLISH
-    pubPath = n.advertise<core_msgs::Path3DArray>(pathTopic, 1);
+    pubPath = n.advertise<core_msgs::PathArray>(pathTopic, 1);
 
     // CONFIGURE THE CONTAINER
     path.header.frame_id = "path";
+    path.header.stamp = ros::Time::now();
   }
 
   void updatePath(std::vector<Node3D> nodePath);
@@ -42,7 +43,7 @@ class Path {
   void clear();
   /// Publishes the path
   void publishPath() { pubPath.publish(path); }
-  core_msgs::Path3DArray getPath() {return path;}
+  core_msgs::PathArray getPath() {return path;}
 
  private:
   /// A handle to the ROS node
@@ -50,7 +51,7 @@ class Path {
   /// Publisher for the path as a spline
   ros::Publisher pubPath;
   /// Path data structure for visualization
-  core_msgs::Path3DArray path;
+  core_msgs::PathArray path;
   bool smoothed = false;
 };
 }

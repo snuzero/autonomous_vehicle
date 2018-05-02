@@ -1,3 +1,0 @@
-Header header
-int32 flag
-std_msgs/Float32MultiArray Float32MultiArray
