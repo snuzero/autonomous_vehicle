@@ -2,8 +2,10 @@
 SNU ZERO repo for autonomous vehicle competition
 
 # ROS
+version: Kinetic
 
-#Installation
+# Installation
+
 Dependency for Hybrid A star
 reference: https://github.com/karlkurzer/path_planner
 ```
