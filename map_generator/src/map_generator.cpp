@@ -15,7 +15,6 @@
 #include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/Image.h>
 #include <image_transport/image_transport.h>
-
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
@@ -33,7 +32,7 @@
 
 #define min(a,b) ((a)<(b)?(a):(b))
 #define RAD2DEG(x) ((x)*180./M_PI)
-#define Z_DEBUG false
+bool MAP_DEBUG=false;
 std::string config_path;
 
 
@@ -54,6 +53,14 @@ sensor_msgs::ImagePtr msgMapRawImg;
 ros::Publisher flag_obstacle_publisher;
 ros::Publisher target_publisher;
 std_msgs::Int32 msg_flag_obstacle;
+
+ros::Publisher emergency_publisher;
+std_msgs::Int32 msg_emergency_stop;
+int estop_count = 0;
+const int estop_count_threshold = 30;
+int estop_angle_min, estop_angle_max; //deg
+float estop_range_threshold;
+
 geometry_msgs::Vector3 msgTarget;
 
 cv::Mat occupancy_map;
@@ -74,7 +81,7 @@ bool check_out(int cx, int cy)
 
 //TODO: usage of mapInit()
 void mapInit(cv::FileStorage& params_config) {
-  if(Z_DEBUG) cout<<"map_generator map initialization!"<<endl;
+  if(MAP_DEBUG) cout<<"map_generator map initialization!"<<endl;
 
   map_width = params_config["Map.width"];
   map_height = params_config["Map.height"];
@@ -88,6 +95,9 @@ void mapInit(cv::FileStorage& params_config) {
   max_range = params_config["Map.obstacle.max_range"];
   min_theta = params_config["Map.obstacle.min_theta"];//in degree
   max_theta = params_config["Map.obstacle.max_theta"];//in degree
+  estop_angle_max = params_config["Map.obstacle.estop_max_theta"];
+  estop_angle_min = params_config["Map.obstacle.estop_min_theta"];
+  estop_range_threshold = params_config["Map.obstacle.estop_range_threshold"];
 }
 
 int drawObstaclePoints(std::vector<geometry_msgs::Vector3>& _obstacle_points) {
@@ -95,11 +105,13 @@ int drawObstaclePoints(std::vector<geometry_msgs::Vector3>& _obstacle_points) {
   int cx, cy;
   int cx1, cx2, cy1, cy2;
   int obstacle_count = 0;
+  estop_count = 0;
 
   for(int i= _obstacle_points.size()-1; i>=0;i--){
     //cout<<"HERE"<<endl;
     float range_i = _obstacle_points.at(i).x;
     float theta_i = _obstacle_points.at(i).y;//in radian
+    if(range_i < estop_range_threshold && RAD2DEG(theta_i) >= estop_angle_min && RAD2DEG(theta_i) <= estop_angle_max) estop_count++;
     if(range_i>min_range && range_i<max_range && RAD2DEG(theta_i)>min_theta && RAD2DEG(theta_i)<max_theta){
       obstacle_x = range_i*cos(theta_i);
       obstacle_y = range_i*sin(theta_i);
@@ -127,7 +139,7 @@ int drawObstaclePoints(std::vector<geometry_msgs::Vector3>& _obstacle_points) {
           cx2 = cx; cy2 = cy;
         }
 
-        if(!Z_DEBUG) {
+        if(!MAP_DEBUG) {
           //TODO: activate this!!!!!!
           //cout<<"draw points"<<endl;
           cv::ellipse(occupancy_map,cv::Point(cx,cy), cv::Size(safex, safey), 0.0, 0.0, 360.0, cv::Scalar(255,0,0), -1);
@@ -137,11 +149,12 @@ int drawObstaclePoints(std::vector<geometry_msgs::Vector3>& _obstacle_points) {
     }
   }
   //Z_DEBUG
-  if(Z_DEBUG) {
-    cv::circle(occupancy_map, cv::Point(map_width/2,map_height/2-20),20,cv::Scalar(255,0,0), -1);
+  if(MAP_DEBUG) {
+    cv::rectangle(occupancy_map,cv::Point(0,0), cv::Point(map_width/2,5), cv::Scalar(255,0,0), -1);
+    cv::circle(occupancy_map, cv::Point(map_width/2,map_height/2-20),15,cv::Scalar(255,0,0), -1);
     //cv::rectangle(occupancy_map,cv::Point(map_width/2-60, map_height/2-20), cv::Point(map_width/2-48, map_height/2+20), cv::Scalar(255,0,0), -1);
     //cv::rectangle(occupancy_map,cv::Point(map_width/2+48, map_height/2+10), cv::Point(map_width/2+60, map_height/2+30), cv::Scalar(255,0,0), -1);
-    obstacle_count = 1;
+    obstacle_count = 10;
   }
   return obstacle_count;
 }
@@ -152,42 +165,48 @@ void drawLidarPosition() {
   cv::rectangle(occupancy_map_raw,cv::Point(cx-1, cy), cv::Point(cx, cy), cv::Scalar(200,200,200), -1);
 }
 
-void drawTargetPoint(int flag_obstacle) {
+void findTargetInOneRow(int & target_x, int & target_y, int row_index) {
   //TODO
-  int target_x = map_width/2;
-  int target_y = 1;
-
+  int target_threshold = 20;
   int index_lane_left = 0;
   int index_lane_right = 199;
   int index_free= 0;
-  cout<<"first row: "<<endl;
+  // cout<<"first row: "<<endl;
 
   for(int i = 0 ; i<map_width-1 ; i++) {
-    cv::Vec3b px_val1 = occupancy_map.at<cv::Vec3b>(1,i);
-    cv::Vec3b px_val2 = occupancy_map.at<cv::Vec3b>(1,i+1);
+    cv::Vec3b px_val1 = occupancy_map.at<cv::Vec3b>(row_index,i);
+    cv::Vec3b px_val2 = occupancy_map.at<cv::Vec3b>(row_index,i+1);
     //if(x == width/2 && y == height/2) std::cout<<"the red pix value of map center is "<<(int)px_val.val[0]<<std::endl;
     bool isred1 = (int)px_val1.val[0]==255 ? true : false;//val[0]: red
     bool isred2 = (int)px_val2.val[0]==255 ? true : false;//val[0]: red
 
-    if(isred1) cout<<1;
-    else cout<<0;
+    // if(isred1) cout<<1;
+    // else cout<<0;
     if(isred1 && !isred2) index_lane_left=i;
-    else if(!isred1 && isred2) index_lane_right = i;
-    if(isred1) index_free++;
+    else if(!isred1 && isred2 && i < index_lane_right) index_lane_right = i;
+    if(!isred1) index_free++;
   }
-  cout<<endl;
-  cout<<"index_lane_left: "<<index_lane_left<<" and right: "<<index_lane_right<<", free length is: "<<index_free<<endl;
-  target_x = index_lane_left + index_free/ 2;
-  if(target_x ==0 ) target_x = map_width/2;
-  if(flag_obstacle==0) {
-    // if(Z_DEBUG) target_x = map_width/2;
-    //TODO: lane 의 가장 위쪽 끝 두 점의 중점
+  // cout<<endl;
+  //cout<<"index_lane_left: "<<index_lane_left<<" and right: "<<index_lane_right<<", free length is: "<<index_free<<endl;
+  if(index_free == 0) findTargetInOneRow(target_x, target_y, row_index+1);
+  else {
+    target_x = index_lane_left + index_free/ 2;
+    target_y = row_index;
+    return;
   }
-  else if(flag_obstacle>0) {
-    //map 의 가장 위쪽 끝 정중앙
-    // target_x = map_width/2;
-    // target_y = 1;
+  if(index_free == 0 && row_index >=20) {
+    target_x = -1;//target invalid
+    target_y = -1;
+    return;
   }
+}
+
+void drawTargetPoint(int flag_obstacle) {
+  int target_x=0;
+  int target_y=0;
+  findTargetInOneRow(target_x, target_y, 1);
+  if(target_x < 0) return;//target invalid
+
   cv::Vec3b px_val = occupancy_map_raw.at<cv::Vec3b>(cv::Point(target_x,target_y));
   if(px_val.val[0]!=255){
     cv::circle(occupancy_map_raw, cv::Point(target_x,target_y),3,cv::Scalar(0,0,255), -1);
@@ -196,7 +215,7 @@ void drawTargetPoint(int flag_obstacle) {
   else {
     //std::cout<<"the target point is not in the free region!"<<std::endl;
     //TODO: Change the below target point settings later
-    if(Z_DEBUG) occupancy_map_raw.at<cv::Vec3b>(cv::Point(target_x,target_y)) = cv::Vec3b(0,0,255);
+    cv::circle(occupancy_map_raw, cv::Point(target_x,target_y),3,cv::Scalar(255,0,255), -1);
   }
   msgTarget.x = target_y;
   msgTarget.y = target_x;//flipped for the planner's coordinate
@@ -238,13 +257,18 @@ void publishMessages(int flag_obstacle) {
   msg_flag_obstacle.data = flag_obstacle;
   flag_obstacle_publisher.publish(msg_flag_obstacle);
 
+  if(estop_count > estop_count_threshold) {
+    msg_emergency_stop.data = 1;
+    emergency_publisher.publish(msg_emergency_stop);
+  }
+
 }
 void callbackLane(const sensor_msgs::ImageConstPtr& msg_lane_map)
 {
   //if(Z_DEBUG) std::cout<<"callbackLane of Map Generator called!"<<std::endl;
   //Saving msg_lane_map(which is grayscale image) to map(which is CV_8UC3 cv::Mat object)
   ros::Time lane_receive_t0;
-  if(Z_DEBUG) lane_receive_t0 = ros::Time::now();
+  // if(Z_DEBUG) lane_receive_t0 = ros::Time::now();
   cv_bridge::CvImageConstPtr cv_ptr;
   try
   {
@@ -263,12 +287,12 @@ void callbackLane(const sensor_msgs::ImageConstPtr& msg_lane_map)
   images.at(2) = black;  //for red channel
   cv::merge(images, occupancy_map);
   cv::merge(images, occupancy_map_raw);
-  if(Z_DEBUG)
-  {
-    ros::Time lane_receive_t1 = ros::Time::now();
-    ros::Duration d(lane_receive_t1-lane_receive_t0);
-    //std::cout << "Lane Receiving Time in ms: " << d * 1000 << std::endl;
-  }
+  // if(Z_DEBUG)
+  // {
+  //   ros::Time lane_receive_t1 = ros::Time::now();
+  //   ros::Duration d(lane_receive_t1-lane_receive_t0);
+  //   //std::cout << "Lane Receiving Time in ms: " << d * 1000 << std::endl;
+  // }
 }
 
 void callbackObstacle(const core_msgs::ROIPointArrayConstPtr& msg_obstacle)
@@ -311,19 +335,30 @@ void callbackTerminate(const std_msgs::Int32Ptr& record){
 int main(int argc, char** argv)
 {
   //argument setting initialization
-  if(argc < 3)  {
-      std::cout << "usage: rosrun map_generator map_generator_node flag_imshow flag_record" << std::endl;
+  if(argc < 2)  {
+      std::cout << "usage: rosrun map_generator map_generator_node debug_mode" << std::endl;
+      std::cout << "debug_mode is true for debug" << std::endl;
       return -1;
   }
 
-  if (!strcmp(argv[1], "false")) flag_imshow = false;
-  if (!strcmp(argv[2], "false")) flag_record = false;
+  if (!strcmp(argv[1], "true")) MAP_DEBUG = true;
   std::string record_path = ros::package::getPath("map_generator");
   //TODO: add date&time to the file name
-  record_path += "/data/map2.avi";
+  record_path += "/data/map";
+  time_t rawtime;
+  struct tm * timeinfo;
+  char buffer[80];
+
+  time (&rawtime);
+  timeinfo = localtime(&rawtime);
+  strftime(buffer,sizeof(buffer),"%d-%m-%Y %I:%M:%S",timeinfo);
+  std::string date_str(buffer);
+  record_path += date_str;
+  record_path += ".avi";
+
   ROS_INFO_STREAM(record_path);
   //if(flag_record) {
-  bool isVideoOpened =  outputVideo.open(record_path, CV_FOURCC('X', 'V', 'I', 'D'), 25, cv::Size(500,500), true);
+  bool isVideoOpened =  outputVideo.open(record_path, CV_FOURCC('X', 'V', 'I', 'D'), 20, cv::Size(500,500), true);
   //}
   if(isVideoOpened)
     ROS_INFO("video starts recorded!");
@@ -346,6 +381,7 @@ int main(int argc, char** argv)
 
   flag_obstacle_publisher = nh.advertise<std_msgs::Int32>("/flag_obstacle",1);
   target_publisher = nh.advertise<geometry_msgs::Vector3>("/planning_target",1);
+  emergency_publisher = nh.advertise<std_msgs::Int32>("/emergency_stop",1);
 
   image_transport::ImageTransport it(nh);
   publishMapImg = it.advertise("/occupancy_map",1);

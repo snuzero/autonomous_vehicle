@@ -5,9 +5,6 @@ bool is_auto
 #true if estop
 bool estop
 
-#flag_obstacle: number of obstacle points within the lane
-#int16 obstacle
-
 int16 gear
 int16 brake
 

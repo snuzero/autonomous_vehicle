@@ -5,6 +5,7 @@ void Path::clear() {
   Node3D node;
   path.pathpoints.clear();
   path.headings.clear();
+  path.header.stamp = ros::Time::now();
 }
 
 void Path::updatePath(std::vector<Node3D> nodePath) {

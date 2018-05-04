@@ -30,8 +30,8 @@
 #include <boost/thread.hpp>
 #include <boost/bind.hpp>
 
-float vel =1.5;//m/s
-float delta = 0.32;//delta in radian
+float vel =1.0;//m/s
+float delta = 0.64;//delta in radian
 float map_resol;
 float wheelbase = 1.6;
 bool isparkmission = false;
@@ -266,10 +266,10 @@ void callbackMain(const sensor_msgs::ImageConstPtr& msg_map, Astar& astar)
   start.pose.pose.position.y = map_width/2 - x_delay_shift;
   start.pose.pose.position.x = map_height - y_delay_shift; // x and y flips for the input of path planning
   std::cout<<"start x and y is ("<<start.pose.pose.position.x<<", "<<start.pose.pose.position.y<<")"<<std::endl;
-  // if(binMap[(int)(map_height - y_delay_shift)][(int)(map_width/2 - x_delay_shift)]) {
-  //   std::cout<<"start x and y is in the occupied region"<<std::endl;
-  //   return;
-  // }
+  if(binMap[(int)(map_height-1 - y_delay_shift)][(int)(map_width/2 - x_delay_shift)]) {
+    std::cout<<"start x and y is in the occupied region"<<std::endl;
+    return;
+  }
 
 
   tf::Quaternion q = tf::createQuaternionFromRPY(0, 0, yaw_delta+M_PI);
@@ -288,8 +288,9 @@ void callbackMain(const sensor_msgs::ImageConstPtr& msg_map, Astar& astar)
     return;
   }
 
-
-  std::cout << "start and goal set properly!! " << std::endl;
+  if(!binMap[(int)(map_height-1 - y_delay_shift)][(int)(map_width/2 - x_delay_shift)] && !binMap[target_x][target_y]) {
+    std::cout << "start and goal set properly!! " << std::endl;
+  }
 
   astar.plan(start, goal);
   drawMonitorMap(astar);

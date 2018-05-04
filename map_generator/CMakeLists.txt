@@ -34,8 +34,10 @@ include_directories(
   ${Eigen3_INCLUDE_DIRS}
   ${cv_bridge_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
+#  ${core_msgs_INCLUDE_DIRS}
   include
 )
+
 
 ## Declare a C++ library
 add_library(${PROJECT_NAME}
@@ -48,6 +50,7 @@ add_dependencies(map_gen core_msgs_generate_messages_cpp)
 find_package (OpenCV REQUIRED)
 find_package (Eigen3 REQUIRED)
 find_package (cv_bridge REQUIRED)
+#find_package (core_msgs REQUIRED)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(map_gen
