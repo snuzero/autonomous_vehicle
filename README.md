@@ -2,8 +2,30 @@
 SNU ZERO repo for autonomous vehicle competition
 
 # ROS
+version: Kinetic
 
+# Installation
 
+Dependency for Hybrid A star
+reference: https://github.com/karlkurzer/path_planner
+```
+sudo apt-get install ros-kinetic-moveit
+source /opt/ros/kinetic/setup.bash
+```
+
+Dependency for Opencv
+1) the below script will not activate video recording(opencv version problem)
+```
+sudo apt-get install libopencv-dev
+```
+open ~/.bashrc and add
+export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/lib/x86_64-linux-gnu/pkgconfig
+in the last line
+```
+source ~/.bashrc
+```
+2) if you want to record the video, erase opencv 2.4 and install opencv 3.4
+refer to this link: http://webnautes.tistory.com/1030
 
 
 # occupancy_map & monitor_map color code
