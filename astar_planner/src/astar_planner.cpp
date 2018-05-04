@@ -240,7 +240,7 @@ void callbackMain(const sensor_msgs::ImageConstPtr& msg_map, Astar& astar)
     for (int y = 0; y < height; ++y) {
       cv::Vec3b px_val = astar.gridmap.at<cv::Vec3b>(x,y);
       //if(x == width/2 && y == height/2) std::cout<<"the red pix value of map center is "<<(int)px_val.val[0]<<std::endl;
-      binMap[x][y] = (int)px_val.val[0]==255 ? true : false;//val[2]: red
+      binMap[x][y] = (int)px_val.val[0]==255 ? true : false;//val[0]: red
     }
   }
   //if(binMap[width/2][height/2]) std::cout<<"the center is red!!"<<std::endl;
@@ -266,6 +266,11 @@ void callbackMain(const sensor_msgs::ImageConstPtr& msg_map, Astar& astar)
   start.pose.pose.position.y = map_width/2 - x_delay_shift;
   start.pose.pose.position.x = map_height - y_delay_shift; // x and y flips for the input of path planning
   std::cout<<"start x and y is ("<<start.pose.pose.position.x<<", "<<start.pose.pose.position.y<<")"<<std::endl;
+  // if(binMap[(int)(map_height - y_delay_shift)][(int)(map_width/2 - x_delay_shift)]) {
+  //   std::cout<<"start x and y is in the occupied region"<<std::endl;
+  //   return;
+  // }
+
 
   tf::Quaternion q = tf::createQuaternionFromRPY(0, 0, yaw_delta+M_PI);
   tf::quaternionTFToMsg(q,start.pose.pose.orientation);
@@ -278,6 +283,10 @@ void callbackMain(const sensor_msgs::ImageConstPtr& msg_map, Astar& astar)
   tf::Quaternion q_goal = tf::createQuaternionFromRPY(0, 0, M_PI);
   tf::quaternionTFToMsg(q_goal,goal.pose.orientation);
   std::cout<<"goal x and y is ("<<goal.pose.position.x<<", "<<goal.pose.position.y<<")"<<std::endl;
+  if(binMap[target_x][target_y]) {
+    std::cout<<"goal x and y is in the occupied region"<<std::endl;
+    return;
+  }
 
 
   std::cout << "start and goal set properly!! " << std::endl;

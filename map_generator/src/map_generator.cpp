@@ -156,14 +156,37 @@ void drawTargetPoint(int flag_obstacle) {
   //TODO
   int target_x = map_width/2;
   int target_y = 1;
+
+  int index_lane_left = 0;
+  int index_lane_right = 199;
+  int index_free= 0;
+  cout<<"first row: "<<endl;
+
+  for(int i = 0 ; i<map_width-1 ; i++) {
+    cv::Vec3b px_val1 = occupancy_map.at<cv::Vec3b>(1,i);
+    cv::Vec3b px_val2 = occupancy_map.at<cv::Vec3b>(1,i+1);
+    //if(x == width/2 && y == height/2) std::cout<<"the red pix value of map center is "<<(int)px_val.val[0]<<std::endl;
+    bool isred1 = (int)px_val1.val[0]==255 ? true : false;//val[0]: red
+    bool isred2 = (int)px_val2.val[0]==255 ? true : false;//val[0]: red
+
+    if(isred1) cout<<1;
+    else cout<<0;
+    if(isred1 && !isred2) index_lane_left=i;
+    else if(!isred1 && isred2) index_lane_right = i;
+    if(isred1) index_free++;
+  }
+  cout<<endl;
+  cout<<"index_lane_left: "<<index_lane_left<<" and right: "<<index_lane_right<<", free length is: "<<index_free<<endl;
+  target_x = index_lane_left + index_free/ 2;
+  if(target_x ==0 ) target_x = map_width/2;
   if(flag_obstacle==0) {
-    if(Z_DEBUG) target_x = map_width/2;
+    // if(Z_DEBUG) target_x = map_width/2;
     //TODO: lane 의 가장 위쪽 끝 두 점의 중점
   }
   else if(flag_obstacle>0) {
     //map 의 가장 위쪽 끝 정중앙
-    target_x = map_width/2;
-    target_y = 1;
+    // target_x = map_width/2;
+    // target_y = 1;
   }
   cv::Vec3b px_val = occupancy_map_raw.at<cv::Vec3b>(cv::Point(target_x,target_y));
   if(px_val.val[0]!=255){
