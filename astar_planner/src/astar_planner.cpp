@@ -180,7 +180,7 @@ void drawMonitorMap(Astar& astar) {
 }
 
 void callbackState(const core_msgs::VehicleStateConstPtr& msg_state) {
-  delta = (msg_state->steer)*M_PI/180.0;
+  delta = -(msg_state->steer)*M_PI/180.0;
   if(msg_state->speed<20 && msg_state->speed>-20)  vel = msg_state->speed;
 }
 

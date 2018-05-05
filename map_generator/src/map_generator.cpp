@@ -57,7 +57,7 @@ std_msgs::Int32 msg_flag_obstacle;
 ros::Publisher emergency_publisher;
 std_msgs::Int32 msg_emergency_stop;
 int estop_count = 0;
-const int estop_count_threshold = 30;
+const int estop_count_threshold = 10;
 int estop_angle_min, estop_angle_max; //deg
 float estop_range_threshold;
 
@@ -111,7 +111,7 @@ int drawObstaclePoints(std::vector<geometry_msgs::Vector3>& _obstacle_points) {
     //cout<<"HERE"<<endl;
     float range_i = _obstacle_points.at(i).x;
     float theta_i = _obstacle_points.at(i).y;//in radian
-    if(range_i < estop_range_threshold && RAD2DEG(theta_i) >= estop_angle_min && RAD2DEG(theta_i) <= estop_angle_max) estop_count++;
+    if(range_i > 0 && range_i < estop_range_threshold && RAD2DEG(theta_i) >= estop_angle_min && RAD2DEG(theta_i) <= estop_angle_max) estop_count++;
     if(range_i>min_range && range_i<max_range && RAD2DEG(theta_i)>min_theta && RAD2DEG(theta_i)<max_theta){
       obstacle_x = range_i*cos(theta_i);
       obstacle_y = range_i*sin(theta_i);
@@ -256,7 +256,7 @@ void publishMessages(int flag_obstacle) {
 
   msg_flag_obstacle.data = flag_obstacle;
   flag_obstacle_publisher.publish(msg_flag_obstacle);
-
+  cout<<"estop_count : "<<estop_count <<endl;
   if(estop_count > estop_count_threshold) {
     msg_emergency_stop.data = 1;
     emergency_publisher.publish(msg_emergency_stop);

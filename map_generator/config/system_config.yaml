@@ -32,7 +32,7 @@ Map.obstacle.min_theta: -10
 Map.obstacle.max_theta: 190
 Map.obstacle.estop_min_theta: 75
 Map.obstacle.estop_max_theta: 105
-Map.obstacle.estop_range_threshold: 0.5
+Map.obstacle.estop_range_threshold: 0.7
 
 #Path Plan
 Path.headings: 12
